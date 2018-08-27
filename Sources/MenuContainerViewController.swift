@@ -21,26 +21,26 @@ import UIKit
 /**
  Container for menu view controller.
  */
-open class MenuContainerViewController: UIViewController {
-
+open class MenuContainerViewController: UIViewController,UIGestureRecognizerDelegate {
+    
     open override var preferredStatusBarStyle: UIStatusBarStyle {
         return currentContentViewController?.preferredStatusBarStyle ?? .lightContent
     }
-
+    
     fileprivate weak var currentContentViewController: UIViewController?
     fileprivate var navigationMenuTransitionDelegate: MenuTransitioningDelegate!
-
+    
     /**
      Flag indicating if the side menu is being shown.
      */
     fileprivate var isShown = false
-
+    
     public var currentItemOptions = SideMenuItemOptions() {
         didSet {
             navigationMenuTransitionDelegate?.currentItemOptions = currentItemOptions
         }
     }
-
+    
     /**
      The view controller for side menu.
      */
@@ -54,7 +54,7 @@ open class MenuContainerViewController: UIViewController {
             menuViewController.navigationMenuTransitionDelegate = navigationMenuTransitionDelegate
         }
     }
-
+    
     /**
      The options defining side menu transitioning.
      Could be set at any time of controller lifecycle.
@@ -67,18 +67,18 @@ open class MenuContainerViewController: UIViewController {
             navigationMenuTransitionDelegate?.interactiveTransition.options = newValue
         }
     }
-
+    
     /**
      The list of all content view controllers corresponding to side menu items.
      */
     public var contentViewControllers = [UIViewController]()
-
-
+    
+    
     // MARK: - Controller lifecycle
     //
     override open func viewDidLoad() {
         super.viewDidLoad()
-
+        
         let interactiveTransition = MenuInteractiveTransition(
             currentItemOptions: currentItemOptions,
             presentAction: { [unowned self] in
@@ -88,21 +88,34 @@ open class MenuContainerViewController: UIViewController {
                 self.dismissNavigationMenu()
             }
         )
-
+        
         navigationMenuTransitionDelegate = MenuTransitioningDelegate(interactiveTransition: interactiveTransition)
-
+        
         let screenEdgePanRecognizer = UIScreenEdgePanGestureRecognizer(
             target: navigationMenuTransitionDelegate.interactiveTransition,
             action: #selector(MenuInteractiveTransition.handlePanPresentation(recognizer:))
         )
-
+        
+        
         screenEdgePanRecognizer.edges = .left
         view.addGestureRecognizer(screenEdgePanRecognizer)
+        
+        //    my change
+        screenEdgePanRecognizer.delegate = self as! UIGestureRecognizerDelegate
     }
-
+    
+    //    my change
+    public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        if (touch.view is UISlider) {
+            // prevent recognizing touches on the slider
+            return false
+        }
+        return true
+    }
+    
     override open func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
         super.viewWillTransition(to: size, with: coordinator)
-
+        
         let viewBounds = CGRect(x:0, y:0, width:size.width, height:size.height)
         let viewCenter = CGPoint(x:size.width/2, y:size.height/2)
         coordinator.animate(alongsideTransition: { _ in
@@ -122,14 +135,14 @@ open class MenuContainerViewController: UIViewController {
 
 // MARK: - Public
 extension MenuContainerViewController {
-
+    
     /**
      Shows left side menu.
      */
     public func showSideMenu() {
         presentNavigationMenu()
     }
-
+    
     /**
      Hides left side menu.
      Controller from the right side will be visible.
@@ -137,10 +150,10 @@ extension MenuContainerViewController {
     public func hideSideMenu() {
         dismissNavigationMenu()
     }
-
+    
     /**
      Embeds menu item content view controller.
-
+     
      - parameter selectedContentVC: The view controller to be embedded.
      */
     public func selectContentViewController(_ selectedContentVC: UIViewController) {
@@ -148,7 +161,7 @@ extension MenuContainerViewController {
             if currentContentVC != selectedContentVC {
                 currentContentVC.view.removeFromSuperview()
                 currentContentVC.removeFromParentViewController()
-
+                
                 setCurrentView(selectedContentVC)
             }
         } else {
@@ -161,7 +174,7 @@ extension MenuContainerViewController {
 fileprivate extension MenuContainerViewController {
     /**
      Adds proper content view controller as a child.
-
+     
      - parameter selectedContentVC: The view controller to be added.
      */
     func setCurrentView(_ selectedContentVC: UIViewController) {
@@ -169,7 +182,7 @@ fileprivate extension MenuContainerViewController {
         view.addSubviewWithFullSizeConstraints(view: selectedContentVC.view)
         currentContentViewController = selectedContentVC
     }
-
+    
     /**
      Presents left side menu.
      */
@@ -180,7 +193,7 @@ fileprivate extension MenuContainerViewController {
         present(menuViewController, animated: true, completion: nil)
         isShown = true
     }
-
+    
     /**
      Dismisses left side menu.
      */
@@ -194,11 +207,11 @@ extension UIView {
     func addSubviewWithFullSizeConstraints(view : UIView) {
         insertSubviewWithFullSizeConstraints(view: view, atIndex: subviews.count)
     }
-
+    
     func insertSubviewWithFullSizeConstraints(view : UIView, atIndex: Int) {
         view.translatesAutoresizingMaskIntoConstraints = false
         insertSubview(view, at: atIndex)
-
+        
         let top = view.topAnchor.constraint(equalTo: self.topAnchor)
         let leading = view.leadingAnchor.constraint(equalTo: self.leadingAnchor)
         let trailing = self.trailingAnchor.constraint(equalTo: view.trailingAnchor)
